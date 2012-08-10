@@ -2,6 +2,28 @@
 
 A simple control-flow library for node.JS that makes parallel execution, serial execution, and error handling painless.
 
+## Changes to this fork
+
+The functionality that allowed returning something from a step to go to the next step has been removed. The pattern of `if (err) throw err;` does not work in our system, since Step is part of a larger chain of callbacks. With this version you can do:
+
+    function(values, callback) {
+      Step(
+        function readSelf() {
+          fs.readFile(__filename, this);
+        },
+        function capitalize(err, text) {
+          if (err) return callback(err);
+          this(text.toUpperCase());
+        },
+        function showIt(err, newText) {
+          if (err) return callback(err);
+          callback(null, newText);
+        }
+      );
+    }   
+
+Returning will stop the execution, and the rest of the script will not be run.
+
 ## How to install
 
 Simply copy or link the lib/step.js file into your `$HOME/.node_libraries` folder.
@@ -16,7 +38,7 @@ The step library exports a single function I call `Step`.  It accepts any number
       },
       function capitalize(err, text) {
         if (err) throw err;
-        return text.toUpperCase();
+        this(text.toUpperCase());
       },
       function showIt(err, newText) {
         if (err) throw err;
@@ -24,7 +46,7 @@ The step library exports a single function I call `Step`.  It accepts any number
       }
     );
 
-Notice that we pass in `this` as the callback to `fs.readFile`.  When the file read completes, step will send the result as the arguments to the next function in the chain.  Then in the `capitalize` function we're doing synchronous work so we can simple return the new value and Step will route it as if we called the callback.
+Notice that we pass in `this` as the callback to `fs.readFile`.  When the file read completes, step will send the result as the arguments to the next function in the chain. ~~Then in the `capitalize`function we're doing synchronous work so we can simple return the new value and Step will route it as if we called the callback.~~
 
 The first parameter is reserved for errors since this is the node standard.  Also any exceptions thrown are caught and passed as the first argument to the next function.  As long as you don't nest callback functions inline your main functions this prevents there from ever being any uncaught exceptions.  This is very important for long running node.JS servers since a single uncaught exception can bring the whole server down.
 
